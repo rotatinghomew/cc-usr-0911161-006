@@ -1,0 +1,158 @@
+{
+  "scenario": "跨境人工智能数据合作许可登记库",
+  "synthetic": true,
+  "records": [
+    {
+      "record_id": "data_permit_case-001",
+      "payload": {
+        "data_space": "data_space-0",
+        "subject_group": "subject_group-1",
+        "purpose_code": "purpose_code-2",
+        "sample_size": 17.7,
+        "sensitive_share": 0.69,
+        "authorization_scope": "authorization_scope-0",
+        "classification_version": "classification_version-1",
+        "missing_rate": 25.3,
+        "protection_strength": 27.2,
+        "audit_coverage": 29.1,
+        "incident_count": 31.0,
+        "review_authority": "review_authority-1"
+      },
+      "state": "proposed",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_permit_case-002",
+      "payload": {
+        "data_space": "data_space-1",
+        "subject_group": "subject_group-2",
+        "purpose_code": "purpose_code-3",
+        "sample_size": 21.4,
+        "sensitive_share": 0.8,
+        "authorization_scope": "authorization_scope-1",
+        "classification_version": "classification_version-2",
+        "missing_rate": 29.0,
+        "protection_strength": 30.9,
+        "audit_coverage": 32.8,
+        "incident_count": 34.7,
+        "review_authority": "review_authority-2"
+      },
+      "state": "proposed",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_permit_case-003",
+      "payload": {
+        "data_space": "data_space-2",
+        "subject_group": "subject_group-3",
+        "purpose_code": "purpose_code-4",
+        "sample_size": 25.1,
+        "sensitive_share": 0.91,
+        "authorization_scope": "authorization_scope-2",
+        "classification_version": "classification_version-3",
+        "missing_rate": 32.7,
+        "protection_strength": 34.6,
+        "audit_coverage": 36.5,
+        "incident_count": 38.4,
+        "review_authority": "review_authority-3"
+      },
+      "state": "proposed",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_permit_case-004",
+      "payload": {
+        "data_space": "data_space-3",
+        "subject_group": "subject_group-4",
+        "purpose_code": "purpose_code-0",
+        "sample_size": 28.8,
+        "sensitive_share": 0.25,
+        "authorization_scope": "authorization_scope-3",
+        "classification_version": "classification_version-4",
+        "missing_rate": 36.4,
+        "protection_strength": 38.3,
+        "audit_coverage": 40.2,
+        "incident_count": 42.1,
+        "review_authority": "review_authority-4"
+      },
+      "state": "proposed",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_permit_case-005",
+      "payload": {
+        "data_space": "data_space-4",
+        "subject_group": "subject_group-0",
+        "purpose_code": "purpose_code-1",
+        "sample_size": 32.5,
+        "sensitive_share": 0.36,
+        "authorization_scope": "authorization_scope-4",
+        "classification_version": "classification_version-0",
+        "missing_rate": 40.1,
+        "protection_strength": 42.0,
+        "audit_coverage": 43.9,
+        "incident_count": 45.8,
+        "review_authority": "review_authority-0"
+      },
+      "state": "proposed",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_permit_case-006",
+      "payload": {
+        "data_space": "data_space-0",
+        "subject_group": "subject_group-1",
+        "purpose_code": "purpose_code-2",
+        "sample_size": 36.2,
+        "sensitive_share": 0.47,
+        "authorization_scope": "authorization_scope-0",
+        "classification_version": "classification_version-1",
+        "missing_rate": 43.8,
+        "protection_strength": 45.7,
+        "audit_coverage": 47.6,
+        "incident_count": 49.5,
+        "review_authority": "review_authority-1"
+      },
+      "state": "proposed",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_permit_case-007",
+      "payload": {
+        "data_space": "data_space-1",
+        "subject_group": "subject_group-2",
+        "purpose_code": "purpose_code-3",
+        "sample_size": 39.9,
+        "sensitive_share": 0.58,
+        "authorization_scope": "authorization_scope-1",
+        "classification_version": "classification_version-2",
+        "missing_rate": 47.5,
+        "protection_strength": 49.4,
+        "audit_coverage": 51.3,
+        "incident_count": 53.2,
+        "review_authority": "review_authority-2"
+      },
+      "state": "proposed",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_permit_case-008",
+      "payload": {
+        "data_space": "data_space-2",
+        "subject_group": "subject_group-3",
+        "purpose_code": "purpose_code-4",
+        "sample_size": 43.6,
+        "sensitive_share": 0.69,
+        "authorization_scope": "authorization_scope-2",
+        "classification_version": "classification_version-3",
+        "missing_rate": 51.2,
+        "protection_strength": 53.1,
+        "audit_coverage": 55.0,
+        "incident_count": 56.9,
+        "review_authority": "review_authority-3"
+      },
+      "state": "proposed",
+      "source": "synthetic-local-acceptance"
+    }
+  ]
+}
