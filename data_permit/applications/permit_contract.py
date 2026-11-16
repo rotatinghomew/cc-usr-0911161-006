@@ -141,6 +141,12 @@ class DomainRecord:
                             "state": self.state, "version": self.version,
                             "occurred_at": self.occurred_at, "source": self.source})
 
+    @property
+    def content_hash(self) -> str:
+        """Stable digest of the submitted content, ignoring ingest metadata."""
+
+        return stable_hash({"record_id": self.record_id, "payload": self.payload, "source": self.source})
+
     def with_state(self, state: str) -> "DomainRecord":
         return DomainRecord(self.record_id, self.payload, state, self.version + 1,
                             self.occurred_at, self.source)
@@ -160,6 +166,11 @@ class Decision:
     reasons: tuple[str, ...]
     rule_results: tuple[RuleResult, ...]
     metrics: dict[str, float]
+    analysis_basis: dict[str, Any] = field(default_factory=dict)
+    record_version: int = 1
+    record_fingerprint: str = ""
+    record_content_hash: str = ""
+    supersedes: str = ""
     decided_at: str = field(default_factory=utc_now)
 
     def __post_init__(self) -> None:
@@ -169,6 +180,10 @@ class Decision:
             raise ContractError("outcome is required")
         if not self.reasons:
             raise ContractError("decision needs reasons")
+        if self.record_version < 1:
+            raise ContractError("decision record version must be positive")
+        if self.supersedes and identifier(self.supersedes) != self.supersedes:
+            raise ContractError("supersedes must be a decision identifier")
 
     @property
     def fingerprint(self) -> str:
@@ -177,7 +192,25 @@ class Decision:
     def as_dict(self) -> dict[str, Any]:
         return {"record_id": self.record_id, "outcome": self.outcome, "score": self.score,
                 "reasons": list(self.reasons), "rules": [item.as_dict() for item in self.rule_results],
-                "metrics": self.metrics, "decided_at": self.decided_at}
+                "metrics": self.metrics, "analysis_basis": self.analysis_basis,
+                "record_version": self.record_version, "record_fingerprint": self.record_fingerprint,
+                "record_content_hash": self.record_content_hash,
+                "supersedes": self.supersedes, "decided_at": self.decided_at}
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "Decision":
+        rules = tuple(RuleResult(item["code"], item["passed"], item["score"], item["severity"],
+                                item["message"], dict(item.get("permit_store") or {}))
+                      for item in value.get("rules") or [])
+        return cls(record_id=str(value["record_id"]), outcome=str(value["outcome"]),
+                   score=float(value["score"]), reasons=tuple(value.get("reasons") or ()),
+                   rule_results=rules, metrics=dict(value.get("metrics") or {}),
+                   analysis_basis=dict(value.get("analysis_basis") or {}),
+                   record_version=int(value.get("record_version") or 1),
+                   record_fingerprint=str(value.get("record_fingerprint") or ""),
+                   record_content_hash=str(value.get("record_content_hash") or ""),
+                   supersedes=str(value.get("supersedes") or ""),
+                   decided_at=str(value.get("decided_at") or utc_now()))
 
 
 def require_fields(record: DomainRecord, fields: Iterable[str] = REQUIRED_FIELDS) -> list[str]:

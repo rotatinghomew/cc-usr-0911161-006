@@ -1133,8 +1133,17 @@ def guard_report(record: DomainRecord, context: Mapping[str, Any] | None = None)
     return {'passed': sum(item[0] for item in results), 'failed': sum(not item[0] for item in results),
             'messages': [item[1] for item in results]}
 
-def decide(record: DomainRecord, context: Mapping[str, Any] | None = None) -> Decision:
-    context = context or {}
+def decide(record: DomainRecord, context: Mapping[str, Any] | None = None,
+           analysis: Mapping[str, Any] | None = None) -> Decision:
+    context = dict(context or {})
+    analysis = analysis if analysis is not None else context.get('analysis')
+    if analysis is not None:
+        from data_permit.privacy.stratified import decision_basis, stratum_for
+
+        basis = decision_basis(analysis, stratum_for(record, analysis))
+        context['analysis_basis'] = basis
+    else:
+        basis = dict(context.get('analysis_basis') or {})
     rules = evaluate(record, context)
     scorecard = record_score(record, context)
     guards = guard_report(record, context)
@@ -1150,9 +1159,21 @@ def decide(record: DomainRecord, context: Mapping[str, Any] | None = None) -> De
         outcome = 'review'
     else:
         outcome = 'reject'
-    reasons = (f"score={scorecard['score']:.6f}", f"critical={critical}",
-               f"guards={guards['passed']}/{guards['passed'] + guards['failed']}")
-    return Decision(record.record_id, outcome, effective_score, reasons, rules, scorecard['metrics'])
+    reasons = [f"score={scorecard['score']:.6f}", f"critical={critical}",
+               f"guards={guards['passed']}/{guards['passed'] + guards['failed']}"]
+    if basis.get('stratum') is not None:
+        reasons.append("stratum=" + "/".join(str(basis['stratum'][name]) for name in ('data_space', 'subject_group', 'classification_version')))
+        if basis.get('rankable'):
+            reasons.append(f"stratum_rank={basis.get('rank') if basis.get('rank') is not None else 'unranked'}")
+        else:
+            codes = ','.join(item.get('code', '') for item in basis.get('reasons', [])) or 'not_rankable'
+            reasons.append(f"stratum_not_rankable={codes}")
+    elif analysis is not None:
+        reasons.append("stratum_not_rankable=incomplete_stratum_fields")
+    return Decision(record.record_id, outcome, effective_score, tuple(reasons), rules,
+                    scorecard['metrics'], analysis_basis=basis,
+                    record_version=record.version, record_fingerprint=record.fingerprint,
+                    record_content_hash=record.content_hash)
 
 def advance_for_outcome(record: DomainRecord, decision: Decision) -> DomainRecord:
     current = STATES.index(record.state)

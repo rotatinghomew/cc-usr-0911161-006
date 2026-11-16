@@ -36,9 +36,19 @@ CREATE TABLE IF NOT EXISTS decisions(
     record_id TEXT NOT NULL,
     outcome TEXT NOT NULL,
     score REAL NOT NULL,
+    record_version INTEGER NOT NULL DEFAULT 1,
+    record_fingerprint TEXT NOT NULL DEFAULT '',
+    record_content_hash TEXT NOT NULL DEFAULT '',
+    analysis_hash TEXT NOT NULL DEFAULT '',
+    supersedes TEXT NOT NULL DEFAULT '',
     decision_json TEXT NOT NULL,
     decided_at TEXT NOT NULL,
     FOREIGN KEY(record_id) REFERENCES records(record_id)
+);
+CREATE TABLE IF NOT EXISTS analyses(
+    analysis_hash TEXT PRIMARY KEY,
+    analysis_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS events(
     event_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,6 +93,14 @@ class Repository:
     def initialize(self) -> None:
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+            existing = {row[1] for row in connection.execute("PRAGMA table_info(decisions)")}
+            for name, definition in (("record_version", "INTEGER NOT NULL DEFAULT 1"),
+                                     ("record_fingerprint", "TEXT NOT NULL DEFAULT ''"),
+                                     ("record_content_hash", "TEXT NOT NULL DEFAULT ''"),
+                                     ("analysis_hash", "TEXT NOT NULL DEFAULT ''"),
+                                     ("supersedes", "TEXT NOT NULL DEFAULT ''")):
+                if name not in existing:
+                    connection.execute(f"ALTER TABLE decisions ADD COLUMN {name} {definition}")
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -168,12 +186,60 @@ class Repository:
             if not connection.execute("SELECT 1 FROM records WHERE record_id=?", (decision.record_id,)).fetchone():
                 raise ContractError("decision record does not exist")
             body = canonical_json(decision.as_dict())
-            connection.execute("INSERT OR IGNORE INTO decisions(decision_id,record_id,outcome,score,decision_json,decided_at) VALUES(?,?,?,?,?,?)",
-                               (decision_id, decision.record_id, decision.outcome, decision.score, body, decision.decided_at))
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO decisions(decision_id,record_id,outcome,score,record_version,"
+                "record_fingerprint,record_content_hash,analysis_hash,supersedes,decision_json,decided_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                (decision_id, decision.record_id, decision.outcome, decision.score,
+                 decision.record_version, decision.record_fingerprint, decision.record_content_hash,
+                 decision.analysis_basis.get("hash", ""), decision.supersedes, body, decision.decided_at))
+            if cursor.rowcount == 0:
+                # Replaying the exact same decision is a no-op.  A different
+                # decision for the same record is a new immutable row.
+                existing = connection.execute("SELECT decision_json FROM decisions WHERE decision_id=?",
+                                              (decision_id,)).fetchone()
+                if existing and existing[0] == body:
+                    return decision_id
+                raise ContractError("conflicting decision replay")
             self.append_event(connection, "decision.saved", decision.record_id,
                               self.event_count(decision.record_id, connection) + 1,
-                              {"decision_id": decision_id, "outcome": decision.outcome, "score": decision.score})
+                              {"decision_id": decision_id, "outcome": decision.outcome,
+                               "score": decision.score, "record_version": decision.record_version,
+                               "record_content_hash": decision.record_content_hash,
+                               "analysis_hash": decision.analysis_basis.get("hash", "")})
         return decision_id
+
+    def save_analysis(self, analysis: Mapping[str, Any]) -> str:
+        """Persist the exact analysis object that decisions and exports cite."""
+
+        analysis_hash = (analysis.get("basis") or {}).get("hash", "")
+        if not analysis_hash:
+            raise ContractError("analysis is missing a basis hash")
+        body = canonical_json(analysis)
+        with self.transaction() as connection:
+            row = connection.execute("SELECT analysis_json FROM analyses WHERE analysis_hash=?",
+                                     (analysis_hash,)).fetchone()
+            if row is None:
+                connection.execute("INSERT INTO analyses(analysis_hash,analysis_json,created_at) VALUES(?,?,?)",
+                                   (analysis_hash, body, utc_now()))
+                self.append_event(connection, "analysis.recorded", analysis_hash, 1,
+                                  {"analysis_hash": analysis_hash})
+            elif row[0] != body:
+                raise ContractError("conflicting analysis for basis hash")
+        return analysis_hash
+
+    def get_analysis(self, analysis_hash: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute("SELECT analysis_json FROM analyses WHERE analysis_hash=?",
+                                     (analysis_hash,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def latest_decision(self, record_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT decision_json FROM decisions WHERE record_id=? ORDER BY decided_at DESC, decision_id DESC LIMIT 1",
+                (record_id,)).fetchone()
+        return json.loads(row[0]) if row else None
 
     def event_count(self, aggregate_id: str, connection: sqlite3.Connection | None = None) -> int:
         owns = connection is None
